@@ -5,6 +5,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 public class Server {
@@ -59,19 +60,19 @@ class ClientInputThread extends  Thread {
     }
 
     public void run() {
-        String receivedMsg;
         while(true) {
             try {
                 String typeOfData = dis.readUTF();
-                receivedMsg = dis.readUTF();
-                String[] arrOfData = receivedMsg.split("-", 2);
-                if (arrOfData.length > 1) {
-                    System.out.println(arrOfData[0] + "-" + arrOfData[1]);
-                    Socket receiSock = ss.getUsers().get(arrOfData[0]);
-                    ClientOutputThread receiver = new ClientOutputThread(ss, receiSock,
-                            new DataOutputStream(receiSock.getOutputStream()), arrOfData[1]);
-                    receiver.start();
-                }
+                int count = dis.readInt();
+                byte[] receivedMsg = new byte[count];
+                dis.readFully(receivedMsg);
+
+                String[] classifies = typeOfData.split("-", 2);
+                String[] toUser = classifies[1].split("@", 2);
+                Socket receiSock = ss.getUsers().get(toUser[0]);
+                ClientOutputThread receiver = new ClientOutputThread(ss, receiSock,
+                        new DataOutputStream(receiSock.getOutputStream()), receivedMsg, classifies[0] + "@" + toUser[1]);
+                receiver.start();
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -84,18 +85,22 @@ class ClientOutputThread extends Thread {
     final DataOutputStream dos;
     final Socket s;
     final Server ss;
-    final String sendingMsg;
+    final byte[] sendingMsg;
+    final String sender;
 
-    public ClientOutputThread(Server ss, Socket s, DataOutputStream dos, String sendingMsg) {
+    public ClientOutputThread(Server ss, Socket s, DataOutputStream dos, byte[] sendingMsg, String sender) {
         this.dos = dos;
         this.s = s;
         this.ss = ss;
         this.sendingMsg = sendingMsg;
+        this.sender = sender;
     }
 
     public void run() {
         try {
-            dos.writeUTF(sendingMsg);
+            dos.writeUTF(sender);
+            dos.writeInt(sendingMsg.length);
+            dos.write(sendingMsg);
         } catch (IOException e) {
             e.printStackTrace();
         }
