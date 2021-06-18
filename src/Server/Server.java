@@ -62,17 +62,37 @@ class ClientInputThread extends  Thread {
     public void run() {
         while(true) {
             try {
-                String typeOfData = dis.readUTF();
+                String receivedSig = dis.readUTF();
                 int count = dis.readInt();
                 byte[] receivedMsg = new byte[count];
                 dis.readFully(receivedMsg);
 
-                String[] classifies = typeOfData.split("-", 2);
-                String[] toUser = classifies[1].split("@", 2);
-                Socket receiSock = ss.getUsers().get(toUser[0]);
-                ClientOutputThread receiver = new ClientOutputThread(ss, receiSock,
-                        new DataOutputStream(receiSock.getOutputStream()), receivedMsg, classifies[0] + "@" + toUser[1]);
-                receiver.start();
+                //first data sending will be the signature for routing
+                // signature: typeOfData-Receivers@Sender
+                String[] typeOfData = receivedSig.split("-", 2);
+                String[] toUsers = typeOfData[1].split("@", 2);
+                String[] receiveUser = toUsers[0].split(", ", -2);
+                int loop = receiveUser.length;
+                if (receiveUser.length < 1) {
+
+                } else {
+
+                }
+                for (int i = 0; i < loop; i++) {
+                    String signature = typeOfData[0] + "@" + toUsers[1];
+
+                    //if there are many users that will receive the message(group chat)
+                    if (toUsers[0].contains(", "))
+                        signature = signature + "=>" + toUsers[0];
+
+                    Socket receiSock = ss.getUsers().get(receiveUser[i]);
+                    if (receiSock != null) {
+                        ClientOutputThread receiver = new ClientOutputThread(ss, receiSock,
+                                new DataOutputStream(receiSock.getOutputStream()), receivedMsg, signature);
+                        receiver.start();
+                        System.out.println(signature);
+                    }
+                }
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -86,19 +106,19 @@ class ClientOutputThread extends Thread {
     final Socket s;
     final Server ss;
     final byte[] sendingMsg;
-    final String sender;
+    final String signature;
 
-    public ClientOutputThread(Server ss, Socket s, DataOutputStream dos, byte[] sendingMsg, String sender) {
+    public ClientOutputThread(Server ss, Socket s, DataOutputStream dos, byte[] sendingMsg, String signature) {
         this.dos = dos;
         this.s = s;
         this.ss = ss;
         this.sendingMsg = sendingMsg;
-        this.sender = sender;
+        this.signature = signature;
     }
 
     public void run() {
         try {
-            dos.writeUTF(sender);
+            dos.writeUTF(signature);
             dos.writeInt(sendingMsg.length);
             dos.write(sendingMsg);
         } catch (IOException e) {

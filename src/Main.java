@@ -10,5 +10,6 @@ public class Main {
         //JFrame server = new ServerGUI();
         //server.setVisible(true);
         Server server = new Server();
+
     }
 }
