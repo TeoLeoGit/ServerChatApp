@@ -5,6 +5,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -21,27 +22,75 @@ public class Server extends Thread {
 
     public void run() {
         try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/chatappuser", "root", "teo15102000");
             userListString = new String();
             ss = new ServerSocket(serverPort);
             while (!exit) {
                 Socket s = null;
                 try {
                     s = ss.accept();
-                    System.out.println("Talking to client");
+                    System.out.println("Received a request to connect");
                     DataInputStream dis = new DataInputStream(s.getInputStream());
                     DataOutputStream dos = new DataOutputStream(s.getOutputStream());
 
-                    //receiving new username
-                    String username = dis.readUTF();
+                    //checking connection
+                    String signature = dis.readUTF();
+                    String[] action = signature.split(">", 2);
+                    if(action.length > 1) {
+                        if(action[0].equals("Login")) {
+                            String[] usernameAndPw = action[1].split("##", 2);
+                            String username = usernameAndPw[0];
+                            String password = usernameAndPw[1];
+                            if(userListString.contains(username)) {
+                                dos.writeUTF("Reject>Already logged in");
+                            } else {
+                                String query = "select username from accounts where username='" + username +
+                                        "' and password= '" + password + "';";
+                                Statement stmt = conn.createStatement();
+                                ResultSet rs = stmt.executeQuery(query);
+                                if(rs.next()) {
+                                    //Sending user list to client
+                                    dos.writeUTF(userListString.replace("-" + username, ""));
 
-                    //Sending user list to client
-                    dos.writeUTF(userListString.replace("-" + username, ""));
-
-                    if (!userListString.contains(username)) {
-                        userListString = userListString + "-" + username;
-                        users.put(username, s);
+                                    if (!userListString.contains(username)) {
+                                        userListString = userListString + "-" + username;
+                                        users.put(username, s);
+                                    }
+                                } else {
+                                    dos.writeUTF("Reject>Wrong password");
+                                }
+                                stmt.close();
+                            }
+                        }
+                        else {
+                            //Regist new account
+                            try {
+                                String[] usernameAndPw = action[1].split("##", 2);
+                                String username = usernameAndPw[0];
+                                String password = usernameAndPw[1];
+                                String query = "insert into accounts (username, password) values (?, ?)";
+                                PreparedStatement st = conn.prepareStatement(query);
+                                st.setString(1, username);
+                                st.setString(2, password);
+                                int exec = st.executeUpdate();
+                                dos.writeUTF("Registered>" + username);
+                            } catch (SQLIntegrityConstraintViolationException ex) {
+                                dos.writeUTF("Already Registered>Refuse");
+                            }
+                        }
                     }
+                    else {
+                        //not login
+                        //Sending user list to client
+                        dos.writeUTF(userListString.replace("-" + signature, ""));
 
+                        if (!userListString.contains(signature)) {
+                            userListString = userListString + "-" + signature;
+                            users.put(signature, s);
+                        }
+
+                    }
                     //multithreading
                     Thread inThread = new ClientInputThread(this, s, dis);
                     inThread.start();
@@ -49,7 +98,7 @@ public class Server extends Thread {
                     e.printStackTrace();
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
     }
@@ -65,7 +114,8 @@ public class Server extends Thread {
         exit = true;
         for (String i : users.keySet())
             users.get(i).close();
-        ss.close();
+        if (ss != null)
+            ss.close();
     }
 
     public void removeUserFromStr(String user) {

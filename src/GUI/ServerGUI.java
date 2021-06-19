@@ -26,6 +26,7 @@ public class ServerGUI extends JFrame {
         JButton setPortBtn = new JButton("Confirm");
         JButton openPortBtn = new JButton("Open server");
         JButton closePortBtn = new JButton("Close server");
+        JButton resetUserListBtn = new JButton("Reset user list");
         JLabel serverInfoLabel = new JLabel("Server default port: 3500");
 
         portLabel.setBounds(20, 20, 120, 25);
@@ -40,16 +41,21 @@ public class ServerGUI extends JFrame {
         closePortBtn.setBounds(180, 60, 140, 25);
         closePortBtn.setBackground(Color.WHITE);
 
+        resetUserListBtn.setBounds(520, 20, 80, 25);
+        resetUserListBtn.setBackground(Color.WHITE);
+
         serverInfoLabel.setBounds(20, 90, 200, 25);
 
-        String columnUser[] = {"Username", "Remove"};
-        DefaultTableModel modelUser = new DefaultTableModel(columnUser, 0);
-        JTable userTable = new JTable(modelUser);
-        ButtonEditor chatCell = new ButtonEditor(new JTextField());
-        ButtonRenderer chatBtn = new ButtonRenderer();
+        String columnUser[] = {"Username"};
+        DefaultTableModel modelUser = new DefaultTableModel(columnUser, 0){
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
 
-        userTable.getColumnModel().getColumn(1).setCellEditor(chatCell);
-        userTable.getColumnModel().getColumn(1).setCellRenderer(chatBtn);
+        JTable userTable = new JTable(modelUser);
+
         userTable.setShowGrid(false);
         userTable.setRowMargin(10);
         userTable.getColumnModel().setColumnMargin(10);
@@ -67,6 +73,7 @@ public class ServerGUI extends JFrame {
         mainPanel.add(openPortBtn);
         mainPanel.add(userPane);
         mainPanel.add(serverInfoLabel);
+        mainPanel.add(resetUserListBtn);
         add(mainPanel);
 
 
@@ -81,12 +88,11 @@ public class ServerGUI extends JFrame {
         //change port
         setPortBtn.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                serverPort = Integer.parseInt(portTxt.getText());
                 try {
                     int temp = serverPort;
                     serverPort = Integer.parseInt(portTxt.getText());
                     if (serverPort > 0) {
-                        serverInfoLabel.setText("Server current port: " + portTxt.getText());
+                        serverInfoLabel.setText("Server port setted: " + portTxt.getText());
                     } else
                         serverPort = temp;
                 } catch (NumberFormatException ex) {
@@ -98,23 +104,54 @@ public class ServerGUI extends JFrame {
         //open server
         openPortBtn.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
+                if (server[0] != null && !server[0].getServerSocket().isClosed()) {
+                    try {
+                        Thread.sleep(500);
+                        server[0].closeServer();
+                        Thread.sleep(500);
+                    } catch (IOException | InterruptedException ioException) {
+                        ioException.printStackTrace();
+                        JOptionPane.showMessageDialog(closePortBtn, "failed to close server");
+                    }
+                }
                 server[0] = new Server(serverPort);
                 server[0].start();
                 JOptionPane.showMessageDialog(openPortBtn, "Server opened");
+                serverInfoLabel.setText("Current server port: " + serverPort);
             }
         });
 
         //close server
         closePortBtn.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                if(server[0] != null) {
+                if(server[0] != null && !server[0].getServerSocket().isClosed()) {
                     try {
+                        Thread.sleep(500);
                         server[0].closeServer();
-                        server[0].interrupt();
-                        System.out.println("OK xong");
-                    } catch (IOException ioException) {
+                        Thread.sleep(500);
+                        JOptionPane.showMessageDialog(closePortBtn, "Closed server!");
+                        serverInfoLabel.setText("Server closed.");
+                    } catch (IOException | InterruptedException ioException) {
                         ioException.printStackTrace();
                         JOptionPane.showMessageDialog(closePortBtn, "failed to close server");
+                    }
+                }
+            }
+        });
+
+        //reset active user list
+        resetUserListBtn.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                DefaultTableModel model = (DefaultTableModel) userTable.getModel();
+                int rowCount = model.getRowCount();
+
+                for (int i = 0; i < rowCount; i++) {
+                    model.removeRow(i);
+                }
+                //adding new row
+                if (server[0] != null && !server[0].getUsers().isEmpty()) {
+                    for (String item : server[0].getUsers().keySet()) {
+                        model.addRow(new Object[]{item});
                     }
                 }
             }
