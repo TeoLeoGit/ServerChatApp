@@ -41,7 +41,7 @@ public class ServerGUI extends JFrame {
         closePortBtn.setBounds(180, 60, 140, 25);
         closePortBtn.setBackground(Color.WHITE);
 
-        resetUserListBtn.setBounds(520, 20, 80, 25);
+        resetUserListBtn.setBounds(490, 20, 110, 25);
         resetUserListBtn.setBackground(Color.WHITE);
 
         serverInfoLabel.setBounds(20, 90, 200, 25);

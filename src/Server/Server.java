@@ -26,16 +26,19 @@ public class Server extends Thread {
             Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/chatappuser", "root", "teo15102000");
             userListString = new String();
             ss = new ServerSocket(serverPort);
+
             while (!exit) {
                 Socket s = null;
                 try {
                     s = ss.accept();
-                    System.out.println("Received a request to connect");
+                    System.out.println("Received a request to connect:");
                     DataInputStream dis = new DataInputStream(s.getInputStream());
                     DataOutputStream dos = new DataOutputStream(s.getOutputStream());
 
                     //checking connection
                     String signature = dis.readUTF();
+                    System.out.println(signature);
+
                     String[] action = signature.split(">", 2);
                     if(action.length > 1) {
                         if(action[0].equals("Login")) {
@@ -51,12 +54,9 @@ public class Server extends Thread {
                                 ResultSet rs = stmt.executeQuery(query);
                                 if(rs.next()) {
                                     //Sending user list to client
-                                    dos.writeUTF(userListString.replace("-" + username, ""));
-
-                                    if (!userListString.contains(username)) {
-                                        userListString = userListString + "-" + username;
-                                        users.put(username, s);
-                                    }
+                                    dos.writeUTF(userListString);
+                                    userListString = userListString + "-" + username;
+                                    users.put(username, s);
                                 } else {
                                     dos.writeUTF("Reject>Wrong password");
                                 }
@@ -113,7 +113,8 @@ public class Server extends Thread {
     public void closeServer() throws IOException {
         exit = true;
         for (String i : users.keySet())
-            users.get(i).close();
+            users.remove(i);
+        userListString = null;
         if (ss != null)
             ss.close();
     }
@@ -174,6 +175,7 @@ class ClientInputThread extends  Thread {
                                         new DataOutputStream(receiSock.getOutputStream()), receivedMsg, signature);
                                 receiver.start();
                                 System.out.println(signature);
+                                System.out.println(ss.getUsers().get(receiveUser[i]));
                             }
                         }
                     } else {
@@ -183,6 +185,7 @@ class ClientInputThread extends  Thread {
                                     new DataOutputStream(receiSock.getOutputStream()), receivedMsg, signature);
                             receiver.start();
                             System.out.println(signature);
+                            System.out.println(ss.getUsers().get(toUsers[0]));
                         }
                     }
                 }

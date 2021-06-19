@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="ServerChatApp:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/ServerChatApp_jar</output-path>
+    <root id="archive" name="ServerChatApp.jar">
+      <element id="module-output" name="ServerChatApp" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../../../../App to study/mysql-connector-java-8.0.25/mysql-connector-java-8.0.25.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
