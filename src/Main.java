@@ -7,9 +7,7 @@ public class Main {
 
     public static void main(String[] args) {
 	// write your code here
-        //JFrame server = new ServerGUI();
-        //server.setVisible(true);
-        Server server = new Server();
-
+        JFrame serverFrame = new ServerGUI();
+        serverFrame.setVisible(true);
     }
 }
